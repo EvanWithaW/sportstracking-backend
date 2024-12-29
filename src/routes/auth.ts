@@ -1,6 +1,7 @@
 import express, { Request, Response, NextFunction } from 'express';
 import { AuthController } from '@controllers/authController';
 import { authenticateUser } from '@middleware/authMiddleware';
+import { wrapMiddleware } from '../utils/wrapMiddleware';
 
 const router = express.Router();
 const authController = new AuthController();
@@ -23,36 +24,11 @@ const errorHandler = (fn: Function) => async (req: Request, res: Response, next:
   }
 };
 
-// Middleware wrapper that allows both async functions and middleware
-const wrapMiddleware = (middleware: Function) => 
-  async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      // If middleware returns a promise, await it
-      if (middleware.constructor.name === 'AsyncFunction') {
-        await middleware(req, res, next);
-      } else {
-        // Otherwise, call it directly
-        middleware(req, res, next);
-      }
-    } catch (error) {
-      next(error);
-    }
-  };
-
 // Authentication routes
 router.post('/signup', errorHandler(authController.signup));
 router.post('/login', errorHandler(authController.login));
 router.post('/logout', errorHandler(authController.logout));
-
-// Protected routes
-router.get('/profile', 
-  wrapMiddleware(authenticateUser), 
-  errorHandler(authController.getProfile)
-);
-router.put('/profile', 
-  wrapMiddleware(authenticateUser), 
-  errorHandler(authController.updateProfile)
-);
+router.post('/refresh-token', errorHandler(authController.refreshToken));
 
 // Supabase authentication callback
 router.get('/callback', errorHandler(authController.handleAuthCallback));

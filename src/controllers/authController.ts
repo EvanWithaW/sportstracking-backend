@@ -22,65 +22,70 @@ export class AuthController {
   // Signup method
   async signup(req: Request, res: Response, next: NextFunction) {
     try {
-      const { 
-        email, 
-        password, 
-        username, 
-        first_name, 
-        last_name 
-      }: UserRegistration = req.body;
+      const { email, password, username, first_name, last_name }: UserRegistration = req.body;
 
       // Validate input
-      if (!email || !password) {
-        return res.status(400).json({ message: 'Email and password are required' });
+      if (!email || !password || !username) {
+        return res.status(400).json({ message: 'Email, password, and username are required' });
       }
 
       // Signup with Supabase
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            username,
-            first_name,
-            last_name,
-            favorite_teams: []
-          }
-        }
-      });
+      const { data: authData, error: authError } = await supabase.auth.signUp({ email, password });
 
-      if (error) {
-        return res.status(400).json({ 
-          message: 'Signup failed', 
-          error: error.message 
-        });
+      if (authError) {
+        return res.status(400).json({ message: 'Signup failed', error: authError.message });
       }
 
-      // Ensure user exists
-      if (!data.user) {
-        return res.status(401).json({ message: 'User not found' });
+      console.log('Inserting into user_profiles:', {
+        user_id: authData.user?.id || '',
+        username,
+        first_name,
+        last_name,
+        email: authData.user?.email || '',
+        favorite_teams: [],
+        profile_pic_url: ''
+      });
+
+      if (!authData.user) {
+        console.error('User not found after signup:', authData);
+        return res.status(401).json({ message: 'User not found or error fetching user' });
+      }
+
+      // Insert into user_profiles
+      const { data: profileData, error: profileError } = await supabase
+        .from('user_profiles')
+        .insert({
+          user_id: authData.user.id || '',
+          username,
+          first_name,
+          last_name,
+          email: authData.user.email || '',
+          favorite_teams: [],
+          profile_pic_url: ''
+        });
+
+      console.log('Profile insert response:', profileData, profileError);
+
+      if (profileError) {
+        return res.status(500).json({ message: 'Profile creation failed', error: profileError.message });
       }
 
       // Generate JWT token
       const tokenPayload = {
-        id: data.user.id,
-        email: data.user.email || ''
+        id: authData.user.id,
+        email: authData.user.email || ''
       };
 
-      console.log('Signup Token Payload:', tokenPayload);
-
       const token = AuthController.generateToken(tokenPayload);
-
-      console.log('Generated Signup Token:', token);
 
       res.status(201).json({
         message: 'Signup successful',
         user: {
-          id: data.user.id,
-          email: data.user.email || ''
+          id: authData.user.id,
+          email: authData.user.email || ''
         },
         token,
-        refresh_token: data.session?.refresh_token
+        refresh_token: authData.session?.refresh_token
       });
     } catch (error) {
       next(error);
@@ -121,11 +126,7 @@ export class AuthController {
         email: data.user.email || ''
       };
 
-      console.log('Login Token Payload:', tokenPayload);
-
       const token = AuthController.generateToken(tokenPayload);
-
-      console.log('Generated Login Token:', token);
 
       res.status(200).json({
         message: 'Login successful',
@@ -160,90 +161,34 @@ export class AuthController {
     }
   }
 
-  // Get user profile
-  async getProfile(req: Request, res: Response, next: NextFunction) {
+  // Refresh token method
+  async refreshToken(req: Request, res: Response, next: NextFunction) {
     try {
-      // User is already attached to req by authenticateUser middleware
-      const user = req.user;
-
-      if (!user) {
-        return res.status(404).json({ message: 'User not found' });
+      const { refreshToken } = req.body;
+      if (!refreshToken) {
+        return res.status(400).json({ message: 'Refresh token is required' });
       }
+
+      // Verify the refresh token
+      const decoded = jwt.verify(refreshToken, config.JWT_SECRET, {
+        algorithms: ['HS256']
+      }) as { id: string, email: string };
+
+      // Generate a new access token
+      const newAccessToken = AuthController.generateToken({
+        id: decoded.id,
+        email: decoded.email
+      });
 
       res.status(200).json({
-        user: {
-          id: user.id,
-          email: user.email,
-          ...user.user_metadata
-        }
+        accessToken: newAccessToken
       });
     } catch (error) {
-      next(error);
-    }
-  }
-
-  // Update user profile
-  async updateProfile(req: Request, res: Response, next: NextFunction) {
-    try {
-      const { 
-        username, 
-        first_name, 
-        last_name, 
-        favorite_teams 
-      } = req.body;
-
-      // Validate favorite teams (optional)
-      if (favorite_teams) {
-        if (!Array.isArray(favorite_teams)) {
-          return res.status(400).json({ 
-            message: 'Favorite teams must be an array' 
-          });
-        }
-
-        if (favorite_teams.length > 5) {
-          return res.status(400).json({ 
-            message: 'Maximum 5 favorite teams allowed' 
-          });
-        }
-
-        const invalidTeams = favorite_teams.filter(team => 
-          typeof team !== 'string' || team.trim().length === 0
-        );
-
-        if (invalidTeams.length > 0) {
-          return res.status(400).json({ 
-            message: 'Invalid team names provided' 
-          });
-        }
-      }
-
-      // Update user metadata
-      const { data, error } = await supabase.auth.updateUser({
-        data: {
-          username: username || req.user.user_metadata.username,
-          first_name: first_name || req.user.user_metadata.first_name,
-          last_name: last_name || req.user.user_metadata.last_name,
-          favorite_teams: favorite_teams || req.user.user_metadata.favorite_teams
-        }
+      console.error('Refresh Token Error:', error);
+      return res.status(401).json({ 
+        message: 'Invalid or expired refresh token',
+        error: error instanceof Error ? error.message : 'Token verification failed'
       });
-
-      if (error) {
-        return res.status(500).json({ 
-          message: 'Profile update failed', 
-          error: error.message 
-        });
-      }
-
-      res.status(200).json({ 
-        message: 'Profile updated successfully',
-        user: {
-          id: req.user.id,
-          email: req.user.email,
-          ...data.user?.user_metadata
-        }
-      });
-    } catch (error: any) {
-      next(error);
     }
   }
 
@@ -279,11 +224,7 @@ export class AuthController {
         email: data.user.email || ''
       };
 
-      console.log('Callback Token Payload:', tokenPayload);
-
       const token = AuthController.generateToken(tokenPayload);
-
-      console.log('Generated Callback Token:', token);
 
       // Redirect to frontend with token
       res.redirect(`http://localhost:${config.PORT}/dashboard?token=${token}&refresh_token=${data.session?.refresh_token}`);

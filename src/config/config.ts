@@ -17,4 +17,6 @@ export const config = {
   SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY || ''
 };
 
+// console.log('JWT Secret:', config.JWT_SECRET);
+
 export const supabase = createClient(config.SUPABASE_URL, config.SUPABASE_ANON_KEY);
