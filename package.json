@@ -1,0 +1,48 @@
+{
+  "name": "sportstracking-backend",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "ts-node -r tsconfig-paths/register src/server.ts",
+    "dev": "nodemon --exec ts-node -r tsconfig-paths/register src/server.ts"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/EvanWithaW/sportstracking-backend.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/EvanWithaW/sportstracking-backend/issues"
+  },
+  "homepage": "https://github.com/EvanWithaW/sportstracking-backend#readme",
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/cors": "^2.8.17",
+    "@types/express": "^5.0.0",
+    "@types/helmet": "^0.0.48",
+    "@types/jsonwebtoken": "^9.0.7",
+    "@types/node": "^22.10.2",
+    "@types/react": "~18.3.12",
+    "@types/react-native": "^0.72.8",
+    "nodemon": "^3.1.9",
+    "ts-node": "^10.9.2",
+    "tsconfig-paths": "^4.2.0",
+    "typescript": "^5.7.2"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.47.10",
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "expo-secure-store": "^14.0.0",
+    "express": "^4.21.2",
+    "helmet": "^8.0.0",
+    "jsonwebtoken": "^9.0.2",
+    "react-dom": "18.3.1",
+    "react-native-web": "~0.19.13",
+    "@expo/metro-runtime": "~4.0.0"
+  }
+}

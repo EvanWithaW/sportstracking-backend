@@ -1,0 +1,33 @@
+{
+  "compilerOptions": {
+    "target": "es2016",
+    "module": "commonjs",
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "strict": true,
+    "skipLibCheck": true,
+    "moduleResolution": "node",
+    "baseUrl": "./src",
+    "paths": {
+      "@controllers/*": [
+        "controllers/*"
+      ],
+      "@models/*": [
+        "models/*"
+      ],
+      "@routes/*": [
+        "routes/*"
+      ],
+      "@config/*": [
+        "config/*"
+      ],
+      "@utils/*": [
+        "utils/*"
+      ],
+      "@middleware/*": [
+        "middleware/*"
+      ]
+    }
+  },
+  "extends": "expo/tsconfig.base"
+}
